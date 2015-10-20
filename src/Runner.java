@@ -6,7 +6,8 @@ import java.io.File;
 public class Runner {
 
     public static void main(String[] args) {
-        Dictionary dict = new Dictionary("dicts/cmudict-0.7b.txt", true);
+        StringGraph graph = new StringGraph();
+        graph.importText("texts/Earnest.txt");
     }
 
 }

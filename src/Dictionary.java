@@ -1,8 +1,7 @@
 import java.io.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Scanner;
+import java.util.NoSuchElementException;
 
 /**
  * Created by jonahrr on 10/19/15.
@@ -26,12 +25,14 @@ public class Dictionary {
                 while ((line = br.readLine()) != null) {
                     String[] entry = process(line);
 
+                    if (entries.containsKey(entry[0])) {
+                        continue;
+                    }
                     String[] value = new String[ATTR_COUNT];
                     value[METER_INDEX] = entry[1];
                     value[RHYME_INDEX] = entry[2];
 
                     entries.put(entry[0], value);
-                    System.out.println(Arrays.toString(entry));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -69,6 +70,18 @@ public class Dictionary {
 
     }
 
+    public String[] lookup(String str) {
+        if (entries.containsKey(str.toUpperCase())) {
+            String[] ret = new String[3];
+            ret[0] = str.toUpperCase();
+            ret[1] = entries.get(str.toUpperCase())[METER_INDEX];
+            ret[2] = entries.get(str.toUpperCase())[RHYME_INDEX];
+            return ret;
+        } else {
+            throw new NoSuchElementException();
+        }
+    }
+
     private static String[] process(String str) { // formatted for cmudict
         String[] arr = new String[3];
         int firstSpace = str.indexOf(" ");
@@ -80,6 +93,9 @@ public class Dictionary {
 
         // get word component
         arr[0] = str.substring(0, firstSpace); // word component
+        if (arr[0].contains("(")) {
+            arr[0] = arr[0].substring(0, arr[0].indexOf("("));
+        }
 
         String stem = str.substring(firstSpace+1); // two spaces in between
 
