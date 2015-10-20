@@ -11,7 +11,7 @@ public class StringEdge {
     public StringEdge(StringNode tail, StringNode head) {
         this.tail = tail;
         this.head = head;
-        this.probability = 0; // probability equalizing to be implemented in StringChain class for efficiency
+        this.probability = 0; // probability equalizing to be implemented in StringGraph class for efficiency
         this.count = 1;
     }
 
