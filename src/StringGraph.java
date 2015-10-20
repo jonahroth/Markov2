@@ -1,16 +1,15 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.regex.PatternSyntaxException;
 
 /**
  * Created by jonahrr on 10/19/15.
  */
 public class StringGraph {
+
+    // TODO this implements a markov chain by word of order 1; generalize to any order
 
     HashMap<String[], StringEdge> edges;
     HashMap<String,   StringNode> nodes;
@@ -39,6 +38,10 @@ public class StringGraph {
             StringNode tailNode = exists(from);
             StringNode headNode = exists(to);
             candidateEdge = new StringEdge(tailNode, headNode);
+            String[] arr = {from, to};
+            edges.put(arr, candidateEdge);
+            tailNode.edgesOut.add(candidateEdge);
+            headNode.edgesIn.add(candidateEdge);
         }
         return candidateEdge;
     }
@@ -54,13 +57,17 @@ public class StringGraph {
     }
 
     public void standardize() {
-        Collection<StringNode> vals = nodes.values();
-        for (StringNode s : vals) {
+        Iterator vals = nodes.entrySet().iterator();
+        while (vals.hasNext()) {
+            HashMap.Entry pair = (HashMap.Entry)vals.next();
+            StringNode s = (StringNode)pair.getValue();
             int totalCount = 0;
             for (StringEdge e : s.edgesOut) {
                 totalCount += e.count;
             }
-            for (StringEdge e : s.edgesOut) {
+            Iterator<StringEdge> edgeIterator = s.edgesOut.iterator();
+            while(edgeIterator.hasNext()) {
+                StringEdge e = edgeIterator.next();
                 e.probability = (double) e.count / (double) totalCount;
             }
             if (s.meter == null || s.rhyme == null) {
@@ -103,6 +110,46 @@ public class StringGraph {
         str = str.replaceAll("[^a-zA-Z0-9-']", "");
         str = str.toUpperCase();
         return str;
+    }
+
+    public StringNode highCountWord() { // TODO this method sucks, we need to find words that begin sentences
+        return this.exists("THE");
+        /*
+        Object[] edgeCol = edges.values().toArray();
+        int index;
+        do {
+            index = (int) (Math.random() * edgeCol.length);
+        } while (!(edgeCol[index] instanceof StringEdge && ((StringEdge) edgeCol[index]).count < 5));
+        return ((StringEdge) edgeCol[index]).head;
+        */
+    }
+
+    public StringNode nextWord(StringNode word) { // TODO rewrite so we don't need probability at all?
+                                                    // is it faster this way?
+        double p = Math.random();
+        double acc = 0.0;
+        for (StringEdge e : word.edgesOut) {
+            acc += e.probability;
+            if (acc >= p) {
+                return e.head;
+            }
+        }
+        return null;
+    }
+
+    public String buildChain(int length) {
+        String ret = "";
+        StringNode thisWord = this.highCountWord();
+        while (length > 0) {
+            ret += thisWord.key + " ";
+            thisWord = nextWord(thisWord);
+            if (thisWord == null) {
+                thisWord = this.highCountWord();
+            }
+            length--;
+        }
+
+        return ret;
     }
 
 }
