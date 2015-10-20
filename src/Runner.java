@@ -6,9 +6,9 @@ import java.io.File;
 public class Runner {
 
     public static void main(String[] args) {
-        StringGraph graph = new StringGraph();
-        graph.importText("/texts/Earnest.txt");
-        System.out.println(graph.buildChain(10));
+        StringGraph graph = new StringGraph(3);
+        graph.importText("texts/Earnest.txt");
+        System.out.println(graph.buildChain(1000));
     }
 
 }

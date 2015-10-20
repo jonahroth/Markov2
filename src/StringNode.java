@@ -7,6 +7,7 @@ public class StringNode {
     String key;
     String meter;
     String rhyme;
+    String[] data;
 
     LinkedList<StringEdge> edgesIn;
     LinkedList<StringEdge> edgesOut;

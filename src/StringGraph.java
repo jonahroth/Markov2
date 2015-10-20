@@ -1,6 +1,4 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
 import java.util.*;
 import java.util.regex.PatternSyntaxException;
 
@@ -11,14 +9,21 @@ public class StringGraph {
 
     // TODO this implements a markov chain by word of order 1; generalize to any order
 
+    int order;
     HashMap<String[], StringEdge> edges;
-    HashMap<String,   StringNode> nodes;
+    HashMap<String, StringNode> nodes;
     Dictionary dictionary;
 
     public StringGraph() {
         this.edges = new HashMap<>();
         this.nodes = new HashMap<>();
         this.dictionary = new Dictionary("dicts/cmudict-0.7b.txt", true);
+        this.order = 1;
+    }
+
+    public StringGraph(int n) {
+        this();
+        this.order = n;
     }
 
     public StringNode exists(String key) {
@@ -55,7 +60,7 @@ public class StringGraph {
             candidateEdge.count++;
         }
     }
-
+/*
     public void standardize() {
         Iterator vals = nodes.entrySet().iterator();
         while (vals.hasNext()) {
@@ -83,7 +88,7 @@ public class StringGraph {
             }
         }
     }
-
+*/
     public void importText(String filePath ) {
         File file = new File(filePath);
 
@@ -92,8 +97,16 @@ public class StringGraph {
             while ((line = br.readLine()) != null) {
                 try {
                     String[] splitArray = line.split("-+|\\s+");
-                    for (int i = 0; i < splitArray.length - 1; i++) {
-                        this.linkOrIncrement(wordOnly(splitArray[i]), wordOnly(splitArray[i+1]));
+                    System.out.println(Arrays.toString(splitArray));
+                    if (splitArray.length < this.order) continue;
+                    for (int i = 0; i < splitArray.length - this.order - 1; i++) {
+                        String[] thisWords = new String[this.order];
+                        String[] nextWords = new String[this.order];
+                        for (int j = 0; j < this.order; j++) {
+                            thisWords[j] = wordOnly(splitArray[i+j]);
+                            nextWords[j] = wordOnly(splitArray[i+j+1]);
+                        }
+                        this.linkOrIncrement(String.join(" ", thisWords), String.join(" ", nextWords));
                     }
                 } catch (PatternSyntaxException ex) {
                     ex.printStackTrace();
@@ -103,7 +116,7 @@ public class StringGraph {
             e.printStackTrace();
         }
 
-        this.standardize();
+        // this.standardize();
     }
 
     public static String wordOnly(String str) {
@@ -113,23 +126,31 @@ public class StringGraph {
     }
 
     public StringNode highCountWord() { // TODO this method sucks, we need to find words that begin sentences
-        return this.exists("THE");
-        /*
+
         Object[] edgeCol = edges.values().toArray();
         int index;
         do {
             index = (int) (Math.random() * edgeCol.length);
         } while (!(edgeCol[index] instanceof StringEdge && ((StringEdge) edgeCol[index]).count < 5));
         return ((StringEdge) edgeCol[index]).head;
-        */
+
     }
+
 
     public StringNode nextWord(StringNode word) { // TODO rewrite so we don't need probability at all?
                                                     // is it faster this way?
-        double p = Math.random();
-        double acc = 0.0;
+
+        int count = 0;
+
         for (StringEdge e : word.edgesOut) {
-            acc += e.probability;
+            count += e.count;
+        }
+
+        int p = (int) (Math.random() * count);
+        int acc = 0;
+
+        for (StringEdge e : word.edgesOut) {
+            acc += e.count;
             if (acc >= p) {
                 return e.head;
             }
@@ -140,16 +161,57 @@ public class StringGraph {
     public String buildChain(int length) {
         String ret = "";
         StringNode thisWord = this.highCountWord();
-        while (length > 0) {
-            ret += thisWord.key + " ";
+        while (length > 1) {
+            ret += thisWord.key.substring(0, thisWord.key.indexOf(" ")) + " ";
             thisWord = nextWord(thisWord);
             if (thisWord == null) {
                 thisWord = this.highCountWord();
             }
             length--;
         }
+        ret += thisWord.key;
 
         return ret;
+    }
+
+    public StringGraph importPath(String filePath) {
+        StringGraph ret = null;
+        try {
+            FileInputStream fileIn = new FileInputStream(filePath);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            Object[] imports = (Object[]) in.readObject();
+            in.close();
+            fileIn.close();
+            int order = (int)imports[0];
+            ret = new StringGraph(order);
+            ret.edges = (HashMap<String[], StringEdge>)imports[1];
+            ret.nodes = (HashMap<String, StringNode>)imports[2];
+
+        } catch(IOException i) {
+            i.printStackTrace();
+        } catch(ClassNotFoundException c) {
+            System.out.println("Employee class not found");
+            c.printStackTrace();
+        }
+        System.out.println("Successfully deserialized " + filePath);
+        return ret;
+    }
+
+    public void export(String filePath) {
+        try {
+            Object[] exports = {order, edges, nodes};
+            FileOutputStream fileOut = new FileOutputStream(filePath);
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+            out.writeObject(exports);
+            out.close();
+            fileOut.close();
+            System.out.printf("Serialized data is saved in " + filePath);
+        }catch(IOException i)
+        {
+            i.printStackTrace();
+        }
+
+
     }
 
 }
