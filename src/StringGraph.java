@@ -7,8 +7,6 @@ import java.util.regex.PatternSyntaxException;
  */
 public class StringGraph {
 
-    // TODO this implements a markov chain by word of order 1; generalize to any order
-
     int order;
     HashMap<String[], StringEdge> edges;
     HashMap<String, StringNode> nodes;
