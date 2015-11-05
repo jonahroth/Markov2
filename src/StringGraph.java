@@ -60,53 +60,84 @@ public class StringGraph {
             candidateEdge.count++;
         }
     }
-/*
-    public void standardize() {
-        Iterator vals = nodes.entrySet().iterator();
-        while (vals.hasNext()) {
-            HashMap.Entry pair = (HashMap.Entry)vals.next();
-            StringNode s = (StringNode)pair.getValue();
-            int totalCount = 0;
-            for (StringEdge e : s.edgesOut) {
-                totalCount += e.count;
-            }
-            Iterator<StringEdge> edgeIterator = s.edgesOut.iterator();
-            while(edgeIterator.hasNext()) {
-                StringEdge e = edgeIterator.next();
-                e.probability = (double) e.count / (double) totalCount;
-            }
-            if (s.meter == null || s.rhyme == null) {
-                try {
-                    String[] values = dictionary.lookup(wordOnly(s.key));
-                    s.meter = values[dictionary.METER_INDEX];
-                    s.rhyme = values[dictionary.RHYME_INDEX];
-                } catch (NoSuchElementException e) {
-                    // expected behavior, not all words in literature are real words
-                    System.out.println(s.key);
-                    continue;
+
+    /*
+        public void standardize() {
+            Iterator vals = nodes.entrySet().iterator();
+            while (vals.hasNext()) {
+                HashMap.Entry pair = (HashMap.Entry)vals.next();
+                StringNode s = (StringNode)pair.getValue();
+                int totalCount = 0;
+                for (StringEdge e : s.edgesOut) {
+                    totalCount += e.count;
+                }
+                Iterator<StringEdge> edgeIterator = s.edgesOut.iterator();
+                while(edgeIterator.hasNext()) {
+                    StringEdge e = edgeIterator.next();
+                    e.probability = (double) e.count / (double) totalCount;
+                }
+                if (s.meter == null || s.rhyme == null) {
+                    try {
+                        String[] values = dictionary.lookup(wordOnly(s.key));
+                        s.meter = values[dictionary.METER_INDEX];
+                        s.rhyme = values[dictionary.RHYME_INDEX];
+                    } catch (NoSuchElementException e) {
+                        // expected behavior, not all words in literature are real words
+                        System.out.println(s.key);
+                        continue;
+                    }
                 }
             }
         }
-    }
-*/
-    public void importText(String filePath ) {
+    */
+    public void importText(String filePath, boolean punctuation) {
         File file = new File(filePath);
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
                 try {
-                    String[] splitArray = line.split("-+|\\s+");
-                    System.out.println(Arrays.toString(splitArray));
-                    if (splitArray.length < this.order) continue;
-                    for (int i = 0; i < splitArray.length - this.order - 1; i++) {
-                        String[] thisWords = new String[this.order];
-                        String[] nextWords = new String[this.order];
-                        for (int j = 0; j < this.order; j++) {
-                            thisWords[j] = wordOnly(splitArray[i+j]);
-                            nextWords[j] = wordOnly(splitArray[i+j+1]);
+                    String[] splitArray = line.split("[\\s-]+");
+                    if (punctuation) {
+                        LinkedList<String> splitList = new LinkedList<>(Arrays.asList(splitArray));
+                        System.out.println(splitList.toString());
+                        if (splitList.size() >= 1) {
+                            // This loop is horribly inefficient. TODO write an iterator that isn't fail-fast
+                            for (int i = 0; i < splitList.size(); i++) {
+                                String current = splitList.get(i);
+                                if (current.length() < 1) continue;
+                                System.out.println(current);
+                                char last = current.charAt(current.length() - 1);
+                                if (isAcceptablePunctuation(last)) {
+                                    splitList.add(i + 1, "" + last);
+                                    i++; // skip the next element
+                                    System.out.println(splitList.get(i));
+                                }
+                            }
+                            for (int i = 0; i < splitList.size() - this.order - 1; i++) {
+                                String[] thisWords = new String[this.order];
+                                String[] nextWords = new String[this.order];
+                                for (int j = 0; j < this.order; j++) {
+                                    thisWords[j] = wordOnly(splitList.get(i + j));
+                                    nextWords[j] = wordOnly(splitList.get(i + j + 1));
+                                }
+                                this.linkOrIncrement(String.join(" ", thisWords), String.join(" ", nextWords));
+
+                            }
+
                         }
-                        this.linkOrIncrement(String.join(" ", thisWords), String.join(" ", nextWords));
+                    } else {
+                        System.out.println(Arrays.toString(splitArray));
+                        if (splitArray.length < this.order) continue;
+                        for (int i = 0; i < splitArray.length - this.order - 1; i++) {
+                            String[] thisWords = new String[this.order];
+                            String[] nextWords = new String[this.order];
+                            for (int j = 0; j < this.order; j++) {
+                                thisWords[j] = wordOnly(splitArray[i + j]);
+                                nextWords[j] = wordOnly(splitArray[i + j + 1]);
+                            }
+                            this.linkOrIncrement(String.join(" ", thisWords), String.join(" ", nextWords));
+                        }
                     }
                 } catch (PatternSyntaxException ex) {
                     ex.printStackTrace();
@@ -119,10 +150,13 @@ public class StringGraph {
         // this.standardize();
     }
 
-    public static String wordOnly(String str) {
-        str = str.replaceAll("[^a-zA-Z0-9-']", "");
-        str = str.toUpperCase();
+    public String wordOnly(String str) {
+        if (!(str.length() == 1 && isAcceptablePunctuation(str.charAt(0)))) {
+            str = str.replaceAll("[^a-zA-Z0-9-']", "");
+            str = str.toUpperCase();
+        }
         return str;
+
     }
 
     public StringNode highCountWord() { // TODO this method sucks, we need to find words that begin sentences
@@ -138,7 +172,7 @@ public class StringGraph {
 
 
     public StringNode nextWord(StringNode word) { // TODO rewrite so we don't need probability at all?
-                                                    // is it faster this way?
+        // is it faster this way?
 
         int count = 0;
 
@@ -182,14 +216,14 @@ public class StringGraph {
             Object[] imports = (Object[]) in.readObject();
             in.close();
             fileIn.close();
-            int order = (int)imports[0];
+            int order = (int) imports[0];
             ret = new StringGraph(order);
-            ret.edges = (HashMap<String[], StringEdge>)imports[1];
-            ret.nodes = (HashMap<String, StringNode>)imports[2];
+            ret.edges = (HashMap<String[], StringEdge>) imports[1];
+            ret.nodes = (HashMap<String, StringNode>) imports[2];
 
-        } catch(IOException i) {
+        } catch (IOException i) {
             i.printStackTrace();
-        } catch(ClassNotFoundException c) {
+        } catch (ClassNotFoundException c) {
             System.out.println("Employee class not found");
             c.printStackTrace();
         }
@@ -206,12 +240,19 @@ public class StringGraph {
             out.close();
             fileOut.close();
             System.out.printf("Serialized data is saved in " + filePath);
-        }catch(IOException i)
-        {
+        } catch (IOException i) {
             i.printStackTrace();
         }
 
 
+    }
+
+    public boolean isAcceptablePunctuation(char c) {
+        char[] acceptable = {'.', ',', '?', '!', '—', '–', '/'};
+        for (char p : acceptable) {
+            if (p == c) return true;
+        }
+        return false;
     }
 
 }

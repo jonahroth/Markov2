@@ -7,7 +7,7 @@ public class Runner {
 
     public static void main(String[] args) {
         StringGraph graph = new StringGraph(3);
-        graph.importText("texts/Earnest.txt");
+        graph.importText("texts/Earnest.txt", true);
         System.out.println(graph.buildChain(1000));
     }
 
